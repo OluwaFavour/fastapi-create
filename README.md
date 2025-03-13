@@ -61,14 +61,36 @@ fastapi-create my_project
 3. **Alembic Configuration**: Asks for a folder name for Alembic migrations (defaults to alembic if unspecified).
 4. **Project Generation**: Sets up the project structure, installs dependencies, and configures all necessary files.
 
-Example:
+Examples:
+
+- Generates the project in the current working directory.
 
 ```bash
-fastapi-create create my_project
-# Follow prompts:
-# - Database dependency: SQLAlchemy
-# - Database URL: sqlite:///my_project.db
-# - Alembic folder name: migrations
+fastapi-create .
+Should the database connection be async or sync? [async/sync] (async): async
+Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
+Enter the path to the SQLite database file: :memory:
+Enter the name of the Alembic folder (alembic): migrations
+```
+
+- Generates the project in a directory called test-project relative to the current working directory.
+
+```bash
+fastapi-create test-project
+Should the database connection be async or sync? [async/sync] (async): async
+Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
+Enter the path to the SQLite database file: :memory:
+Enter the name of the Alembic folder (alembic): migrations
+```
+
+- Calling `fastapi-create [PATH]` without the `[PATH]` prompts the user for a project name.
+
+```bash
+Enter the project name: test-project
+Should the database connection be async or sync? [async/sync] (async): async
+Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
+Enter the path to the SQLite database file: :memory:
+Enter the name of the Alembic folder (alembic): migrations
 ```
 
 ## Generated Project Structure
