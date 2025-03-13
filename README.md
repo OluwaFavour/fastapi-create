@@ -86,6 +86,7 @@ Enter the name of the Alembic folder (alembic): migrations
 - Calling `fastapi-create [PATH]` without the `[PATH]` prompts the user for a project name.
 
 ```bash
+fastapi-create
 Enter the project name: test-project
 Should the database connection be async or sync? [async/sync] (async): async
 Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
