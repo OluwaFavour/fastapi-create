@@ -77,4 +77,4 @@ I aim to foster an inclusive community. Please be respectful and constructive in
 - Integrate a testing framework.
 - Enhance error handling or user prompts.
 
-Questions? Reach out via [email](mailto:fsticks8187@gmail.com) or open an issue on GitHub.
+Questions? Reach out via [email](mailto:fsticks8187@gmail.com) or [open an issue on GitHub](https://github.com/OluwaFavour/fastapi-create/issues).
