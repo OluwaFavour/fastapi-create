@@ -12,7 +12,7 @@ DB_URL_REGEX = re.compile(
 
 ## Dependencies to install
 DEPENDENCIES = [
-    "fastapi[standard]",
+    "fastapi[all]",
     "pydantic-settings",
     "pydantic-extra-types",
     "alembic",
