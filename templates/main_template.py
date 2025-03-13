@@ -56,7 +56,6 @@ async def read_root(request: Request):
     base_url = request.base_url._url.rstrip("/")
     return {
         "message": "I'm alive!",
-        "version": get_settings().app_version,
         "docs": {
             "redoc": f"{base_url}/api/redoc",
             "swagger": f"{base_url}/api/docs",
