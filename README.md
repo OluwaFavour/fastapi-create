@@ -90,7 +90,6 @@ my_project/
 │   │   └── __init__.py
 │   ├── schemas/           # Pydantic schemas (to be expanded)
 │   │   └── __init__.py
-│   ├── lifespans.py       # Application lifespan events
 │   ├── main.py            # FastAPI app entry point
 │   └── __init__.py
 ├── migrations/            # Alembic migrations folder (name customizable)
