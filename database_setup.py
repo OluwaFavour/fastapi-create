@@ -6,7 +6,7 @@ import subprocess
 
 from constants import DB_URL_REGEX
 import typer
-from utils import load_template, write_file, add_key_value_to_env_file
+from utils import generate_file_content, write_file, add_key_value_to_env_file
 
 
 def validate_sqlite_url(value: str) -> bool:
@@ -113,39 +113,16 @@ def configure_database_connection(
             raise typer.Exit(code=1)
 
 
-def generate_database_configuration_code(db_thread_type: str) -> str:
-    """Generate database configuration code from a template."""
-    print("[yellow]Generating database configuration code...[/yellow]")
-    template_name = (
-        f"{'sync' if db_thread_type == 'sync' else 'async'}_db_config_template.py"
-    )
-    return load_template(template_name)
-
-
-def generate_init_db_code(db_thread_type: str) -> str:
-    """Generate database initialization code from a template."""
-    print("[yellow]Generating database initialization code...[/yellow]")
-    template_name = (
-        f"{'sync' if db_thread_type == 'sync' else 'async'}_init_db_template.py"
-    )
-    return load_template(template_name)
-
-
-def generate_models_code() -> str:
-    """Generate models code from a template."""
-    print("[yellow]Generating models code...[/yellow]")
-    return load_template("models_template.py")
-
-
 def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
     """Configure database-related files in the project."""
     db_path = base_path / "app" / "db"
-    for name, generator in [
-        ("config.py", generate_database_configuration_code),
-        ("init_db.py", generate_init_db_code),
-        ("models.py", generate_models_code),
-    ]:
-        print(f"[yellow]Writing {name} to the project...[/yellow]")
-        content = generator(db_thread_type) if "models" not in name else generator()
-        write_file(db_path / name, content)
-        print(f"[green]{name} written successfully[/green]")
+    configs: list[tuple[str, str, dict]] = [
+        ("db_config_template.py", "config.py", {"is_async": db_thread_type == "async"}),
+        ("init_db_template.py", "init_db.py", {"is_async": db_thread_type == "async"}),
+        ("models_template.py", "models.py", {}),
+    ]
+    for template_name, filename, kwargs in configs:
+        print(f"[yellow]Writing {filename} to the project...[/yellow]")
+        content = generate_file_content(template_name, **kwargs)
+        write_file(db_path / filename, content)
+        print(f"[green]{filename} written successfully[/green]")

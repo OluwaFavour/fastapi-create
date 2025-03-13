@@ -1,7 +1,7 @@
-import asyncio
 from logging.config import fileConfig
-
-from sqlalchemy.ext.asyncio import async_engine_from_config, AsyncConnection
+{% if is_async %}import asyncio
+from sqlalchemy.ext.asyncio import async_engine_from_config, AsyncConnection{% else %}
+from sqlalchemy import engine_from_config{% endif %}
 from sqlalchemy import pool
 
 from alembic import context
@@ -53,14 +53,12 @@ def run_migrations_offline() -> None:
 
     with context.begin_transaction():
         context.run_migrations()
-
-
+{% if is_async %}
 def do_run_migrations(connection: AsyncConnection):
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
-        context.run_migrations()
-
+        context.run_migrations(){%endif%}
 
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
@@ -69,17 +67,31 @@ async def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = async_engine_from_config(
+    {% if is_async %}connectable = async_engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+    
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations){% else %}
+    connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
+
+        with context.begin_transaction():
+            context.run_migrations(){% endif %}
 
 
 if context.is_offline_mode():
     run_migrations_offline()
-else:
-    asyncio.run(run_migrations_online())
+else:{% if is_async %}
+    asyncio.run(run_migrations_online()){% else %}
+    run_migrations_online(){% endif %}

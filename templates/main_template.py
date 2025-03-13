@@ -1,11 +1,33 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import get_settings
-from app.lifespans import lifespan
+from app.db.init_db import init_db, dispose_db
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Asynchronous context manager for managing the lifespan of the FastAPI application.
+
+    Parameters:
+    - app (FastAPI): The FastAPI application.
+
+    Yields:
+    None
+
+    Usage:
+    ```
+    async with lifespan(app):
+        # Code to be executed within the lifespan of the application
+    ```
+    """
+    {% if is_async %}await {% endif %}init_db()
+    yield
+    {% if is_async %}await {% endif %}dispose_db()
 
 app = FastAPI(
     debug=get_settings().debug,

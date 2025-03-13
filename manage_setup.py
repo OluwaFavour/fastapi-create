@@ -1,12 +1,12 @@
 from pathlib import Path
 from rich import print
-from utils import load_template, write_file
+from utils import generate_file_content, write_file
 
 
 def generate_manage_code() -> str:
     """Generate manage code from a template."""
     print("[yellow]Generating manage code...[/yellow]")
-    return load_template("manage_template.py")
+    return generate_file_content("manage_template.py")
 
 
 def configure_manage_in_project(base_path: Path) -> None:

@@ -1,5 +1,6 @@
 from pathlib import Path
 import secrets
+from jinja2 import Environment, FileSystemLoader
 import typer
 from rich import print
 from rich.prompt import Prompt
@@ -49,11 +50,9 @@ def add_key_value_to_env_file(env_path: Path, key: str, value: str) -> None:
     set_key(str(env_path), key, value)
 
 
-def load_template(template_name: str) -> str:
-    """Load a template file from the templates directory."""
-    template_path = Path(__file__).parent / "templates" / template_name
-    try:
-        return template_path.read_text()
-    except FileNotFoundError:
-        print(f"[red]Error: Template {template_path} not found[/red]", file="stderr")
-        raise typer.Exit(code=1)
+def generate_file_content(template_name: str, **kwargs) -> str:
+    """Generate file content from a Jinja2 template."""
+    print(f"[yellow]Generating {template_name.split('_template')[0]} code...[/yellow]")
+    env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
+    template = env.get_template(template_name)
+    return template.render(**kwargs)

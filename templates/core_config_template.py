@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./test.db"
     debug: bool = True
-    session_secret_key: str
+    secret_key: str
 
     model_config = SettingsConfigDict(env_file=".env")
 

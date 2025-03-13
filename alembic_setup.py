@@ -3,7 +3,7 @@ import subprocess
 import typer
 from rich import print
 from rich.prompt import Prompt
-from utils import load_template, write_file
+from utils import generate_file_content, write_file
 
 
 def alembic_folder_name_prompt() -> str:
@@ -14,10 +14,9 @@ def alembic_folder_name_prompt() -> str:
 def generate_alembic_env_code(db_thread_type: str) -> str:
     """Generate Alembic env.py code from a template."""
     print("[yellow]Generating Alembic env.py code...[/yellow]")
-    template_name = (
-        f"{'sync' if db_thread_type == 'sync' else 'async'}_alembic_env_template.py"
+    return generate_file_content(
+        "alembic_env_template.py", is_async=db_thread_type == "async"
     )
-    return load_template(template_name)
 
 
 def alembic_setup(folder_name: str, base_path: Path) -> None:
