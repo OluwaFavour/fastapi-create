@@ -1,0 +1,35 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastapi-create"
+version = "0.1.0"  # Match __init__.py
+description = "A CLI tool to scaffold FastAPI projects with database and migration support"
+readme = "README.md"
+authors = [{name = "OluwaFavour", email = "your.email@example.com"}]
+license = "LICENSE"
+requires-python = ">=3.8"
+dependencies = [
+    "click>=8.1.8",
+    "colorama>=0.4.6",
+    "Jinja2>=3.1.6",
+    "markdown-it-py>=3.0.0",
+    "MarkupSafe>=3.0.2",
+    "mdurl>=0.1.2",
+    "Pygments>=2.19.1",
+    "python-dotenv>=1.0.1",
+    "rich>=13.9.4",
+    "shellingham>=1.5.4",
+    "typer>=0.15.2",
+    "typing_extensions>=4.12.2",
+]
+
+[project.scripts]
+fastapi-create = "fastapi_create.main:app"  # CLI entry point
+
+[project.urls]
+Homepage = "https://github.com/OluwaFavour/fastapi-create"
+Repository = "https://github.com/OluwaFavour/fastapi-create"
+Issues = "https://github.com/OluwaFavour/fastapi-create/issues"
