@@ -1,5 +1,7 @@
 import typer
 from manage_setup import configure_manage_in_project
+from readme_setup import configure_readme_in_project
+from requirements_setup import generate_requirements_txt
 from utils import validate_project_name
 from database_setup import (
     configure_database,
@@ -29,6 +31,8 @@ def create(project_name: str = typer.Argument("", callback=validate_project_name
     configure_core_config_in_project(base_path)
     configure_main_in_project(db_thread_type, base_path)
     configure_manage_in_project(base_path)
+    configure_readme_in_project(base_path)
+    generate_requirements_txt(base_path)
 
 
 if __name__ == "__main__":
