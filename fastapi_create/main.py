@@ -25,7 +25,7 @@ def create(project_name: str = typer.Argument("", callback=validate_project_name
     project_name = validate_project_name(project_name)
     base_path: Path = generate_base_path(project_name)
 
-    # Prevent overwriting existing directory unless it's empty
+    # Prevent overwriting existing directory unless it's empty or the current directory
     if base_path.exists() and project_name != ".":
         if base_path.is_dir() and any(base_path.iterdir()):
             print(
