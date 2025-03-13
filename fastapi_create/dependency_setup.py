@@ -1,7 +1,7 @@
 import subprocess
 import typer
 from rich import print
-from constants import DEPENDENCIES
+from fastapi_create.constants import DEPENDENCIES
 
 
 def install_dependencies(db_thread_type: str) -> None:
@@ -17,5 +17,5 @@ def install_dependencies(db_thread_type: str) -> None:
             subprocess.run(["pip", "install", dependency], check=True)
         except subprocess.CalledProcessError:
             print(f"[red]Error installing {dependency}[/red]", file="stderr")
-            raise typer.Exit(code=1)
+            raise RuntimeError(f"Error installing {dependency}")
     print("[green]Dependencies installed successfully[/green]")

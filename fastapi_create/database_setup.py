@@ -4,9 +4,13 @@ from rich import print
 from rich.prompt import Prompt
 import subprocess
 
-from constants import DB_URL_REGEX
+from fastapi_create.constants import DB_URL_REGEX
 import typer
-from utils import generate_file_content, write_file, add_key_value_to_env_file
+from fastapi_create.utils import (
+    generate_file_content,
+    write_file,
+    add_key_value_to_env_file,
+)
 
 
 def validate_sqlite_url(value: str) -> bool:
@@ -79,7 +83,7 @@ def configure_database() -> tuple[str | None, str, str]:
         db_url = Prompt.ask("Enter the path to the SQLite database file")
         # Validate SQLite URL
         if not validate_sqlite_url(db_url):
-            raise typer.Exit(code=1)
+            raise ValueError("Invalid SQLite URL")
         db_url = (
             f"sqlite{'+aiosqlite' if db_thread_type == 'async' else ''}:///{db_url}"
         )
@@ -89,7 +93,7 @@ def configure_database() -> tuple[str | None, str, str]:
         )
         # Validate database URL
         if not validate_db_url(db_url, db_engine):
-            raise typer.Exit(code=1)
+            raise ValueError("Invalid database URL")
         prefix = {
             "postgresql": "postgresql+psycopg",
             "mysql": f"mysql+{'asyncmy' if db_thread_type == 'async' else 'pymysql'}",
@@ -110,16 +114,24 @@ def configure_database_connection(
             subprocess.run(["pip", "install", db_dependency], check=True)
         except subprocess.CalledProcessError:
             print(f"[red]Error installing {db_dependency}[/red]", file="stderr")
-            raise typer.Exit(code=1)
+            raise RuntimeError(f"Error installing {db_dependency}")
 
 
 def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
     """Configure database-related files in the project."""
     db_path = base_path / "app" / "db"
     configs: list[tuple[str, str, dict]] = [
-        ("db_config_template.py", "config.py", {"is_async": db_thread_type == "async"}),
-        ("init_db_template.py", "init_db.py", {"is_async": db_thread_type == "async"}),
-        ("models_template.py", "models.py", {}),
+        (
+            "db_config_template.py.jinja2",
+            "config.py",
+            {"is_async": db_thread_type == "async"},
+        ),
+        (
+            "init_db_template.py.jinja2",
+            "init_db.py",
+            {"is_async": db_thread_type == "async"},
+        ),
+        ("models_template.py.jinja2", "models.py", {}),
     ]
     for template_name, filename, kwargs in configs:
         print(f"[yellow]Writing {filename} to the project...[/yellow]")

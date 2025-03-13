@@ -1,12 +1,12 @@
 from pathlib import Path
 from rich import print
-from utils import generate_file_content, write_file
+from fastapi_create.utils import generate_file_content, write_file
 
 
 def generate_manage_code() -> str:
     """Generate manage code from a template."""
     print("[yellow]Generating manage code...[/yellow]")
-    return generate_file_content("manage_template.py")
+    return generate_file_content("manage_template.py.jinja2")
 
 
 def configure_manage_in_project(base_path: Path) -> None:

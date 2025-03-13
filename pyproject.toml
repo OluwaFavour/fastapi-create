@@ -9,7 +9,7 @@ version = "0.1.0"  # Match __init__.py
 description = "A CLI tool to scaffold FastAPI projects with database and migration support"
 readme = "README.md"
 authors = [{name = "OluwaFavour", email = "your.email@example.com"}]
-license = "LICENSE"
+license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dependencies = [
     "click>=8.1.8",
@@ -28,6 +28,9 @@ dependencies = [
 
 [project.scripts]
 fastapi-create = "fastapi_create.main:app"  # CLI entry point
+
+[tool.setuptools.package-data]
+"fastapi_create" = ["templates/*.jinja2"]
 
 [project.urls]
 Homepage = "https://github.com/OluwaFavour/fastapi-create"

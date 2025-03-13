@@ -13,4 +13,4 @@ def generate_requirements_txt(base_path: Path) -> None:
         print("[green]requirements.txt content generated successfully[/green]")
     except subprocess.CalledProcessError:
         print("[red]Error generating requirements.txt[/red]", file="stderr")
-        raise typer.Exit(code=1)
+        raise RuntimeError("Error generating requirements.txt")

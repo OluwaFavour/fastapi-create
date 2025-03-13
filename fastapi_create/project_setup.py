@@ -1,6 +1,11 @@
 from pathlib import Path
 from rich import print
-from utils import create_file, generate_secret_key, add_key_value_to_env_file
+from fastapi_create.utils import (
+    create_file,
+    generate_base_path,
+    generate_secret_key,
+    add_key_value_to_env_file,
+)
 
 PROJECT_STRUCTURE = {
     "": [".env"],
@@ -14,9 +19,7 @@ PROJECT_STRUCTURE = {
 
 def create_skeleton(path_prefix: str | None = None) -> Path:
     """Create the FastAPI project skeleton."""
-    base_path = Path.cwd() if path_prefix == "." else Path(path_prefix or "")
-    if not base_path.is_absolute():
-        base_path = Path.cwd() / base_path
+    base_path = generate_base_path(path_prefix)
     secret_key = generate_secret_key()
     print("[yellow]Creating project skeleton...[/yellow]")
     for dir_path, files in PROJECT_STRUCTURE.items():
