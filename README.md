@@ -21,6 +21,8 @@ A command-line tool to quickly scaffold a FastAPI project with pre-configured da
 
 ## Installation
 
+*Ensure you have Python 3.8+ installed.*
+
 - Create a new virtual environment:
 
 ```bash
@@ -43,8 +45,6 @@ python -m pip install --upgrade pip
 ```bash
 pip install fastapi-create
 ```
-
-Ensure you have Python 3.8+ installed.
 
 ## Usage
 
