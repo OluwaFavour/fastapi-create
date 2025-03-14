@@ -1,5 +1,6 @@
 from pathlib import Path
 import secrets
+from typing import Any, Callable, Tuple
 from jinja2 import Environment, FileSystemLoader
 import typer
 from rich import print
@@ -63,3 +64,53 @@ def generate_base_path(path_prefix: str | None = None) -> Path:
     if not base_path.is_absolute():
         base_path = Path.cwd() / base_path
     return base_path
+
+
+def recursive_prompt_with_validation(
+    prompt: str,
+    error_msg: str,
+    validation_func: Callable[..., bool],
+    validation_args: Tuple[Any, ...] = (),
+    validation_kwargs: dict[str, Any] | None = None,
+    prompt_kwargs: dict[str, Any] | None = None,
+) -> str:
+    """Recursively prompt the user for input until it passes validation.
+
+    Args:
+        prompt: The message to display to the user.
+        error_msg: The message to show if validation fails.
+        validation_func: A function that takes the input and optional args, returning a boolean.
+        validation_args: Additional positional arguments to pass to validation_func.
+        validation_kwargs: Additional keyword arguments to pass to validation_func.
+        prompt_kwargs: Additional arguments to pass to Prompt.ask and it can include any of the following:
+        console: Console object to use for prompting.
+        password: bool to hide user input.
+        choices: List of valid choices.
+        case_sensitive: bool to make choices case-sensitive.
+        show_default: bool to show the default value.
+        show_choices: bool to show the choices.
+        default: Default value for the prompt.
+        stream: Stream object to use for prompting.
+
+    Returns:
+        A string that passes the validation function.
+
+    Raises:
+        KeyboardInterrupt: If the user interrupts the prompt with Ctrl+C.
+    """
+    try:
+        user_input = Prompt.ask(prompt=prompt, **prompt_kwargs)
+        if not validation_func(user_input, *validation_args, **validation_kwargs):
+            print(f"[red]{error_msg}[/red]")
+            return recursive_prompt_with_validation(
+                prompt,
+                error_msg,
+                validation_func,
+                validation_args,
+                validation_kwargs,
+                prompt_kwargs,
+            )
+        return user_input
+    except KeyboardInterrupt:
+        print("[yellow]Input interrupted by user.[/yellow]")
+        raise

@@ -8,6 +8,7 @@ from fastapi_create.constants import DB_URL_REGEX
 import typer
 from fastapi_create.utils import (
     generate_file_content,
+    recursive_prompt_with_validation,
     write_file,
     add_key_value_to_env_file,
 )
@@ -62,13 +63,13 @@ def validate_db_url(value: str, engine: str) -> bool:
 def configure_database() -> tuple[str | None, str, str]:
     """Configure the database connection details."""
     db_thread_type = Prompt.ask(
-        "Should the database connection be async or sync?",
+        "Do you want to set up an asynchronous database or synchronous database?",
         default="async",
         choices=["async", "sync"],
         show_choices=True,
     )
     db_engine = Prompt.ask(
-        "Which database engine would you like to use?",
+        "Which database are you using?",
         default="postgresql",
         choices=["postgresql", "mysql", "sqlite", "mariadb"],
         show_choices=True,
@@ -80,20 +81,31 @@ def configure_database() -> tuple[str | None, str, str]:
         "sqlite": "aiosqlite" if db_thread_type == "async" else None,
     }[db_engine]
     if db_engine == "sqlite":
-        db_url = Prompt.ask("Enter the path to the SQLite database file")
-        # Validate SQLite URL
-        if not validate_sqlite_url(db_url):
-            raise ValueError("Invalid SQLite URL")
+        db_url = recursive_prompt_with_validation(
+            prompt="Enter the path to the SQLite database file",
+            error_msg="Invalid SQLite URL",
+            validation_func=validate_sqlite_url,
+        )
         db_url = (
             f"sqlite{'+aiosqlite' if db_thread_type == 'async' else ''}:///{db_url}"
         )
     else:
-        db_url = Prompt.ask(
-            "Enter the database connection details (e.g., user:password@host:port/dbname)"
+
+        def recursive_prompt():
+            db_url = Prompt.ask(
+                "Enter the database connection details (e.g., user:password@host:port/dbname)"
+            )
+            # Validate database URL
+            if not validate_db_url(db_url, db_engine):
+                print("[red]Invalid database URL[/red]")
+                return recursive_prompt()
+
+        db_url = recursive_prompt_with_validation(
+            prompt="Enter the database connection details (e.g., user:password@host:port/dbname)",
+            error_msg="Invalid database URL",
+            validation_func=validate_db_url,
+            validation_args=(db_engine,),
         )
-        # Validate database URL
-        if not validate_db_url(db_url, db_engine):
-            raise ValueError("Invalid database URL")
         prefix = {
             "postgresql": "postgresql+psycopg",
             "mysql": f"mysql+{'asyncmy' if db_thread_type == 'async' else 'pymysql'}",
