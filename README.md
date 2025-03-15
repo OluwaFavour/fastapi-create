@@ -67,8 +67,8 @@ Examples:
 
 ```bash
 fastapi-create .
-Should the database connection be async or sync? [async/sync] (async): async
-Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
+Do you want to set up an asynchronous database or synchronous database? [async/sync] (async): async
+Which database are you using? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
 Enter the path to the SQLite database file: :memory:
 Enter the name of the Alembic folder (alembic): migrations
 ```
@@ -77,8 +77,8 @@ Enter the name of the Alembic folder (alembic): migrations
 
 ```bash
 fastapi-create test-project
-Should the database connection be async or sync? [async/sync] (async): async
-Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
+Do you want to set up an asynchronous database or synchronous database? [async/sync] (async): async
+Which database are you using? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
 Enter the path to the SQLite database file: :memory:
 Enter the name of the Alembic folder (alembic): migrations
 ```
@@ -88,8 +88,8 @@ Enter the name of the Alembic folder (alembic): migrations
 ```bash
 fastapi-create
 Enter the project name: test-project
-Should the database connection be async or sync? [async/sync] (async): async
-Which database engine would you like to use? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
+Do you want to set up an asynchronous database or synchronous database? [async/sync] (async): async
+Which database are you using? [postgresql/mysql/sqlite/mariadb] (postgresql): sqlite
 Enter the path to the SQLite database file: :memory:
 Enter the name of the Alembic folder (alembic): migrations
 ```
