@@ -114,7 +114,7 @@ def configure_database(is_async: bool) -> tuple[str | None, str]:
         "mariadb": "pymysql" if not is_async else "asyncmy",
         "sqlite": "aiosqlite" if is_async else None,
     }[db_engine]
-    if db_engine == "sqlite":
+    if db_engine.lower() == "sqlite":
         db_url = recursive_prompt_with_validation(
             prompt="Enter the path to the SQLite database file",
             validation_func=validate_sqlite_url,
