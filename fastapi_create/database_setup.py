@@ -104,7 +104,7 @@ def configure_database(is_async: bool) -> tuple[str | None, str]:
     """
     db_engine = Prompt.ask(
         "Which database are you using?",
-        default="postgresql",
+        default="sqlite",
         choices=["postgresql", "mysql", "sqlite", "mariadb"],
         show_choices=True,
     )
