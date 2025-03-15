@@ -261,3 +261,27 @@ def clean_up(base_path: Path) -> None:
         print(f"[yellow]Removing {base_path}...[/yellow]")
         shutil.rmtree(base_path, ignore_errors=True)
         print("[green]Clean up complete[/green]")
+
+
+def get_plural_name(name: str) -> str:
+    """
+    Get the plural form of a word.
+
+    Args:
+        name (str): The singular form of the word.
+
+    Returns:
+        str: The plural form of the word.
+    """
+    if name.endswith("y"):
+        return name[:-1] + "ies"
+    elif (
+        name.endswith("s")
+        or name.endswith("x")
+        or name.endswith("z")
+        or name.endswith("ch")
+        or name.endswith("sh")
+    ):
+        return name + "es"
+    else:
+        return name + "s"
