@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+{% if cors_enabled %}from fastapi.middleware.cors import CORSMiddleware{% endif %}
 
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -43,7 +43,13 @@ app = FastAPI(
 
 
 ## ADD CORS MIDDLEWARE
-
+{% if cors_enabled %}app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().cors_allowed_origins,
+    allow_credentials=get_settings().cors_allow_credentials,
+    allow_methods=get_settings().cors_allowed_methods,
+    allow_headers=["*"],
+){% endif %}
 
 
 # ADD ROUTERS

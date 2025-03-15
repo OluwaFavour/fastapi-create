@@ -7,10 +7,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    {% if cors_enabled %}# CORS settings
+    cors_allow_credentials: bool = True
+    cors_allowed_methods: list[str] = ["*"]
+    cors_allowed_origins: list[str] = ["*"]{% endif %}
+
+    # Database settings
     database_url: str = "sqlite:///./test.db"
+
+    # Application settings
     debug: bool = True
     secret_key: str
-    {% if smtp_enabled %}smtp_host: str
+    {% if smtp_enabled %}
+    # SMTP settings
+    smtp_host: str
     smtp_login: str
     smtp_password: str
     smtp_port: int{% endif %}

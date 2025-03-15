@@ -75,8 +75,16 @@ def create(project_name: str = typer.Argument("", callback=project_name_callback
             choices=["Yes", "No"],
         )
 
+        ## Prompt user for alembic folder name
         alembic_folder_name = (
             None if alembic_include.lower() == "no" else alembic_folder_name_prompt()
+        )
+
+        ## Prompt user for CORS configuration
+        cors_enabled = Prompt.ask(
+            "Do you want to include CORS middleware?",
+            default="Yes",
+            choices=["Yes", "No"],
         )
 
         # Create project skeleton
@@ -88,11 +96,11 @@ def create(project_name: str = typer.Argument("", callback=project_name_callback
         configure_database_in_project(is_async, base_path)
         if smtp_enabled:
             configure_core_messages_in_project(base_path, is_async)
-        configure_core_config_in_project(base_path, smtp_enabled)
+        configure_core_config_in_project(base_path, cors_enabled, smtp_enabled)
         configure_core_dependencies_in_project(base_path, is_async)
         if alembic_include:
             alembic_setup(alembic_folder_name, base_path, is_async)
-        configure_main_in_project(is_async, base_path)
+        configure_main_in_project(is_async, base_path, cors_enabled)
         configure_manage_in_project(base_path)
         configure_readme_in_project(base_path)
     except KeyboardInterrupt:
