@@ -1,0 +1,68 @@
+from {% if is_async %}aiosmtplib{% else %}smtplib{% endif %} import (
+    SMTP,
+    SMTPConnectError,
+    SMTPHeloError,
+    SMTPAuthenticationError,
+    SMTPException,
+    SMTPResponseException,
+)
+from fastapi import HTTPException, status
+
+from app.core.config import get_settings
+
+async def get{% if is_async %}_async{% endif %}_smtp():
+    """
+    {% if is_async %}Asynchronous{% else %}Synchronous{% endif %} generator to get an SMTP client for sending emails.
+
+    This function initializes a SMTP client using the settings
+    retrieved from the application configuration. It attempts to connect to the
+    SMTP server, start TLS, and authenticate using the provided credentials.
+    If any step fails, an appropriate HTTPException is raised.
+
+    Yields:
+        SMTP: An authenticated and connected SMTP client.
+
+    Raises:
+        HTTPException: If there is an error connecting to the SMTP server, starting TLS,
+                       authenticating, or any other SMTP-related error.
+    """
+    SETTINGS = get_settings()
+    {% if is_async %}async_{% endif %}smtp = SMTP(
+        hostname=SETTINGS.smtp_host,
+        port=SETTINGS.smtp_port,
+        use_tls=False,
+        start_tls=False,
+    )
+    try:
+        {% if is_async %}await async_{% endif %}smtp.connect()
+        {% if is_async %}await async_{% endif %}smtp.starttls()
+        {% if is_async %}await async_{% endif %}smtp.login(SETTINGS.smtp_login, SETTINGS.smtp_password)
+        yield {% if is_async %}async_{% endif %}smtp
+    except SMTPConnectError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Could not connect to SMTP server", "error": str(e)},
+        )
+    except SMTPHeloError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Could not start TLS", "error": str(e)},
+        )
+    except SMTPAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Could not authenticate", "error": str(e)},
+        )
+    except SMTPException as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "An error occurred", "error": str(e)},
+        )
+    finally:
+        try:
+            {% if is_async %}await async_{% endif %}smtp.quit()
+        except SMTPResponseException as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"message": "An error occurred", "error": str(e)},
+            )

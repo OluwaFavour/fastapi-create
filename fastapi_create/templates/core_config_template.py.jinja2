@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./test.db"
     debug: bool = True
     secret_key: str
+    {% if smtp_enabled %}smtp_host: str
+    smtp_login: str
+    smtp_password: str
+    smtp_port: int{% endif %}
 
     model_config = SettingsConfigDict(env_file=".env")
 
