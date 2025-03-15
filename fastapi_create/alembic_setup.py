@@ -3,12 +3,46 @@ import subprocess
 import typer
 from rich import print
 from rich.prompt import Prompt
-from fastapi_create.utils import generate_file_content, write_file
+from fastapi_create.utils import (
+    generate_file_content,
+    write_file,
+    recursive_prompt_with_validation,
+)
+from fastapi_create.constants import PROJECT_NAME_REGEX
+
+
+def validate_alembic_folder_name(folder_name: str) -> bool:
+    """
+    Validate the Alembic folder name to ensure it is a valid directory name.
+
+    Args:
+        folder_name (str): The name of the Alembic folder to validate.
+
+    Returns:
+        bool: True if the folder name is valid, False otherwise.
+    """
+    if not PROJECT_NAME_REGEX.match(folder_name):
+        print(
+            "[red]Error: Invalid Alembic folder name. Must be a valid directory name.[/red]"
+        )
+        return False
+    return True
 
 
 def alembic_folder_name_prompt() -> str:
+    """
+    Prompt the user to enter the name of the Alembic folder.
+
+    Returns:
+        str: The name of the Alembic folder entered by the user, or the default value "alembic" if no input is provided.
+    """
     """Prompt for the Alembic folder name."""
-    return Prompt.ask("Enter the name of the Alembic folder", default="alembic")
+    # return Prompt.ask("Enter the name of the Alembic folder", default="alembic")
+    return recursive_prompt_with_validation(
+        prompt="Enter the name of the Alembic folder",
+        validation_func=validate_alembic_folder_name,
+        prompt_kwargs={"default": "alembic"},
+    )
 
 
 def generate_alembic_env_code(db_thread_type: str) -> str:
