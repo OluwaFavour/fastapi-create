@@ -9,7 +9,6 @@ from rich import print
 from rich.prompt import Prompt
 from dotenv import load_dotenv, set_key
 from fastapi_create.constants import PROJECT_NAME_REGEX
-from fastapi_create.dependency_setup import uninstall_dependencies
 
 
 def validate_project_name(project_name: str) -> bool:
@@ -126,6 +125,22 @@ def recursive_prompt_with_validation(
             prompt_kwargs,
         )
     return user_input
+
+
+def uninstall_dependencies(base_path: Path) -> None:
+    """Uninstall dependencies."""
+    print("[yellow]Uninstalling dependencies...[/yellow]")
+    try:
+        requirements_path = base_path / "requirements.txt"
+        subprocess.run(
+            ["pip", "uninstall", "-r", str(requirements_path), "-y"], check=True
+        )
+        print("[yellow]Deleting requirements.txt...[/yellow]")
+        requirements_path.unlink()
+    except subprocess.CalledProcessError:
+        print("[red]Error uninstalling dependencies[/red]", file="stderr")
+        raise RuntimeError("Error uninstalling dependencies")
+    print("[green]Dependencies uninstalled successfully[/green]")
 
 
 def clean_up(base_path: Path) -> None:

@@ -26,19 +26,3 @@ def install_dependencies(
             raise RuntimeError(f"Error installing {dependency}")
     print("[green]Dependencies installed successfully[/green]")
     generate_requirements_txt(base_path)
-
-
-def uninstall_dependencies(base_path: Path) -> None:
-    """Uninstall dependencies."""
-    print("[yellow]Uninstalling dependencies...[/yellow]")
-    try:
-        requirements_path = base_path / "requirements.txt"
-        subprocess.run(
-            ["pip", "uninstall", "-r", str(requirements_path), "-y"], check=True
-        )
-        print("[yellow]Deleting requirements.txt...[/yellow]")
-        requirements_path.unlink()
-    except subprocess.CalledProcessError:
-        print("[red]Error uninstalling dependencies[/red]", file="stderr")
-        raise RuntimeError("Error uninstalling dependencies")
-    print("[green]Dependencies uninstalled successfully[/green]")
