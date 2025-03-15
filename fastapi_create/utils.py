@@ -1,5 +1,7 @@
 from pathlib import Path
 import secrets
+import shutil
+import subprocess
 from typing import Any, Callable, Tuple
 from jinja2 import Environment, FileSystemLoader
 import typer
@@ -7,17 +9,30 @@ from rich import print
 from rich.prompt import Prompt
 from dotenv import load_dotenv, set_key
 from fastapi_create.constants import PROJECT_NAME_REGEX
+from fastapi_create.dependency_setup import uninstall_dependencies
 
 
-def validate_project_name(project_name: str) -> str:
-    """Validate the project name and prompt if empty."""
-    if project_name == "":
-        project_name = Prompt.ask("Enter the project name")
-        return validate_project_name(project_name)
+def validate_project_name(project_name: str) -> bool:
+    """Validate the project name"""
     if not PROJECT_NAME_REGEX.match(project_name) and project_name != ".":
-        raise typer.BadParameter(
-            "Invalid project name. Must be '.' or a valid Python identifier."
+        print(
+            "[red]Error: Invalid project name. Must be '.' or a valid Python identifier.[/red]"
         )
+        return False
+    return True
+
+
+def project_name_callback(project_name: str) -> str:
+    if project_name.strip() == "":
+        project_name = recursive_prompt_with_validation(
+            prompt="Enter the project name", validation_func=validate_project_name
+        )
+    else:
+        if not validate_project_name(project_name):
+            raise typer.BadParameter(
+                "[red]Error: Invalid project name. Must be '.' or a valid Python identifier.[/red]"
+            )
+
     return project_name
 
 
@@ -68,20 +83,20 @@ def generate_base_path(path_prefix: str | None = None) -> Path:
 
 def recursive_prompt_with_validation(
     prompt: str,
-    error_msg: str,
     validation_func: Callable[..., bool],
     validation_args: Tuple[Any, ...] = (),
-    validation_kwargs: dict[str, Any] | None = None,
-    prompt_kwargs: dict[str, Any] | None = None,
+    validation_kwargs: dict[str, Any] | None = {},
+    error_msg: str | None = None,
+    prompt_kwargs: dict[str, Any] = {},
 ) -> str:
     """Recursively prompt the user for input until it passes validation.
 
     Args:
         prompt: The message to display to the user.
-        error_msg: The message to show if validation fails.
         validation_func: A function that takes the input and optional args, returning a boolean.
         validation_args: Additional positional arguments to pass to validation_func.
         validation_kwargs: Additional keyword arguments to pass to validation_func.
+        error_msg: Optional message to show if validation fails.
         prompt_kwargs: Additional arguments to pass to Prompt.ask and it can include any of the following:
         console: Console object to use for prompting.
         password: bool to hide user input.
@@ -98,19 +113,27 @@ def recursive_prompt_with_validation(
     Raises:
         KeyboardInterrupt: If the user interrupts the prompt with Ctrl+C.
     """
-    try:
-        user_input = Prompt.ask(prompt=prompt, **prompt_kwargs)
-        if not validation_func(user_input, *validation_args, **validation_kwargs):
+    user_input = Prompt.ask(prompt=prompt, **prompt_kwargs)
+    if not validation_func(user_input, *validation_args, **validation_kwargs):
+        if error_msg:
             print(f"[red]{error_msg}[/red]")
-            return recursive_prompt_with_validation(
-                prompt,
-                error_msg,
-                validation_func,
-                validation_args,
-                validation_kwargs,
-                prompt_kwargs,
-            )
-        return user_input
-    except KeyboardInterrupt:
-        print("[yellow]Input interrupted by user.[/yellow]")
-        raise
+        return recursive_prompt_with_validation(
+            prompt,
+            validation_func,
+            validation_args,
+            validation_kwargs,
+            error_msg,
+            prompt_kwargs,
+        )
+    return user_input
+
+
+def clean_up(base_path: Path) -> None:
+    """Remove the project directory if an error occurs."""
+    if base_path and base_path.exists():
+        print("[red]Cleaning up...[/red]")
+        # Uninstall dependencies
+        uninstall_dependencies(base_path)
+        print(f"[yellow]Removing {base_path}...[/yellow]")
+        shutil.rmtree(base_path, ignore_errors=True)
+        print("[green]Clean up complete[/green]")

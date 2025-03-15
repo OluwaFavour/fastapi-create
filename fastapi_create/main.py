@@ -1,10 +1,16 @@
 from pathlib import Path
 import shutil
+from time import sleep
 import typer
+from rich import print
 from fastapi_create.manage_setup import configure_manage_in_project
 from fastapi_create.readme_setup import configure_readme_in_project
 from fastapi_create.requirements_setup import generate_requirements_txt
-from fastapi_create.utils import generate_base_path, validate_project_name
+from fastapi_create.utils import (
+    clean_up,
+    project_name_callback,
+    generate_base_path,
+)
 from fastapi_create.database_setup import (
     configure_database,
     configure_database_connection,
@@ -20,13 +26,12 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command()
-def create(project_name: str = typer.Argument("", callback=validate_project_name)):
+def create(project_name: str = typer.Argument("", callback=project_name_callback)):
     """Create a new FastAPI project."""
-    project_name = validate_project_name(project_name)
     base_path: Path = generate_base_path(project_name)
 
-    # Prevent overwriting existing directory unless it's empty or the current directory
-    if base_path.exists() and project_name != ".":
+    # Prevent overwriting existing directory unless it's empty
+    if base_path.exists():
         if base_path.is_dir() and any(base_path.iterdir()):
             print(
                 f"[red]Error: Directory '{base_path}' already exists and is not empty. Aborting.[/red]"
@@ -42,19 +47,20 @@ def create(project_name: str = typer.Argument("", callback=validate_project_name
         db_dependency, db_url, db_thread_type = configure_database()
         alembic_folder_name = alembic_folder_name_prompt()
         base_path = spin_up_project(project_name)
-        install_dependencies(db_thread_type)
-        configure_database_connection(db_dependency, db_url, base_path)
+        install_dependencies(base_path, db_thread_type, db_dependency)
+        configure_database_connection(db_url, base_path)
         configure_database_in_project(db_thread_type, base_path)
         alembic_setup(alembic_folder_name, base_path)
         configure_core_config_in_project(base_path)
         configure_main_in_project(db_thread_type, base_path)
         configure_manage_in_project(base_path)
         configure_readme_in_project(base_path)
-        generate_requirements_txt(base_path)
+    except KeyboardInterrupt:
+        print("[yellow]Input interrupted by user.[/yellow]")
+        clean_up(base_path)
+        typer.Exit()
     except (Exception, SystemExit):
-        if base_path and base_path.exists():
-            print("[red]Cleaning up...[/red]")
-            shutil.rmtree(base_path, ignore_errors=True)
+        clean_up(base_path)
         raise typer.Exit(code=1)
 
 

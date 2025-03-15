@@ -83,26 +83,14 @@ def configure_database() -> tuple[str | None, str, str]:
     if db_engine == "sqlite":
         db_url = recursive_prompt_with_validation(
             prompt="Enter the path to the SQLite database file",
-            error_msg="Invalid SQLite URL",
             validation_func=validate_sqlite_url,
         )
         db_url = (
             f"sqlite{'+aiosqlite' if db_thread_type == 'async' else ''}:///{db_url}"
         )
     else:
-
-        def recursive_prompt():
-            db_url = Prompt.ask(
-                "Enter the database connection details (e.g., user:password@host:port/dbname)"
-            )
-            # Validate database URL
-            if not validate_db_url(db_url, db_engine):
-                print("[red]Invalid database URL[/red]")
-                return recursive_prompt()
-
         db_url = recursive_prompt_with_validation(
             prompt="Enter the database connection details (e.g., user:password@host:port/dbname)",
-            error_msg="Invalid database URL",
             validation_func=validate_db_url,
             validation_args=(db_engine,),
         )
@@ -115,18 +103,9 @@ def configure_database() -> tuple[str | None, str, str]:
     return db_dependency, db_url, db_thread_type
 
 
-def configure_database_connection(
-    db_dependency: str | None, db_url: str, base_path: Path
-) -> None:
-    """Write database connection details to .env and install dependency."""
+def configure_database_connection(db_url: str, base_path: Path) -> None:
+    """Write database connection details to .env"""
     add_key_value_to_env_file(base_path / ".env", "DATABASE_URL", db_url)
-    if db_dependency:
-        print(f"[yellow]Installing database dependency {db_dependency}...[/yellow]")
-        try:
-            subprocess.run(["pip", "install", db_dependency], check=True)
-        except subprocess.CalledProcessError:
-            print(f"[red]Error installing {db_dependency}[/red]", file="stderr")
-            raise RuntimeError(f"Error installing {db_dependency}")
 
 
 def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
