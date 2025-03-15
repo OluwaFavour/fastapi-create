@@ -159,7 +159,7 @@ def configure_core_messages_in_project(base_path: Path, is_async: bool = True) -
     Returns:
         None
     """
-    messages_path = base_path / "app" / "core" / "messages.py"
+    messages_path = base_path / "app" / "core" / "utils" / "messages.py"
     print("[yellow]Writing core messages to the project...[/yellow]")
     write_file(messages_path, generate_core_messages_code(is_async))
     print("[green]Core messages written successfully[/green]")
