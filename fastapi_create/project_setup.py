@@ -8,10 +8,10 @@ from fastapi_create.utils import (
 )
 
 PROJECT_STRUCTURE = {
-    "": [".env"],
+    "": [".env", "README.md", "requirements.txt", "manage.py"],
     "app": ["__init__.py", "main.py"],
-    "app/core": ["__init__.py", "config.py"],
-    "app/db": [],
+    "app/core": ["__init__.py", "config.py", "messages.py", "dependencies.py"],
+    "app/db": ["config.py", "init_db.py", "models.py"],
     "app/schemas": ["__init__.py"],
     "app/routes": ["__init__.py"],
 }
