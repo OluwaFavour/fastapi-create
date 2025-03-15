@@ -22,7 +22,7 @@ def install_dependencies(
     """
     dependencies = DEPENDENCIES.copy()
     if is_async:
-        dependencies.append("sqlalchemy[asyncio]")
+        dependencies.extend(["sqlalchemy[asyncio]", "aiosmtplib"])
     else:
         dependencies.append("sqlalchemy")
     if db_dependency:
