@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any
-from rich.prompt import Prompt
+from rich.prompt import Prompt, Confirm
 from fastapi_create.constants import (
     SMTP_HOST_REGEX,
     SMTP_PORT_REGEX,
@@ -72,10 +72,8 @@ def smtp_settings_prompt() -> tuple[bool, dict[str, Any] | None]:
             - "smtp_login" (str): The SMTP username.
             - "smtp_password" (str): The SMTP password.
     """
-    smtp_enabled = Prompt.ask(
-        "Do you need SMTP setup?", default="Yes", choices=["Yes", "No"]
-    )
-    if smtp_enabled.lower() == "no":
+    smtp_enabled = Confirm.ask("Do you need SMTP setup?", default=True)
+    if not smtp_enabled:
         return False, None
     smtp_host = recursive_prompt_with_validation(
         prompt="Enter SMTP host (e.g., smtp.gmail.com)",
