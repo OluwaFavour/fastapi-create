@@ -43,24 +43,21 @@ def alembic_folder_name_prompt() -> str:
     )
 
 
-def generate_alembic_env_code(db_thread_type: str) -> str:
+def generate_alembic_env_code(is_async: bool) -> str:
     """
     Generate Alembic env.py code from a template.
 
     Args:
-        db_thread_type (str): The type of database threading to use.
-                              Should be "async" for asynchronous threading.
+        is_async (bool): Whether the application is using asynchronous database operations.
 
     Returns:
         str: The generated Alembic env.py code.
     """
     print("[yellow]Generating Alembic env.py code...[/yellow]")
-    return generate_file_content(
-        "alembic_env_template.py.jinja2", is_async=db_thread_type == "async"
-    )
+    return generate_file_content("alembic_env_template.py.jinja2", is_async=is_async)
 
 
-def alembic_setup(folder_name: str, base_path: Path) -> None:
+def alembic_setup(folder_name: str, base_path: Path, is_async: bool = True) -> None:
     """
     Initialize Alembic and configure the env.py file.
 
@@ -70,6 +67,8 @@ def alembic_setup(folder_name: str, base_path: Path) -> None:
     Args:
         folder_name (str): The name of the folder where Alembic will be initialized.
         base_path (Path): The base path where the folder is located.
+        is_async (bool): Whether the application is using asynchronous database operations.
+                         If True, the database operations will be asynchronous. Defaults to True.
 
     Raises:
         RuntimeError: If there is an error during the initialization of Alembic.
@@ -83,6 +82,6 @@ def alembic_setup(folder_name: str, base_path: Path) -> None:
         raise RuntimeError("Error initializing Alembic")
     print("[green]Alembic initialized successfully[/green]")
     env_path = base_path / folder_name / "env.py"
-    env_code = generate_alembic_env_code(db_thread_type="async")
+    env_code = generate_alembic_env_code(is_async)
     write_file(env_path, env_code)
     print("[green]Alembic env.py configured successfully[/green]")

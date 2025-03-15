@@ -86,27 +86,22 @@ def validate_db_url(value: str, engine: str) -> bool:
         return False
 
 
-def configure_database() -> tuple[str | None, str, str]:
+def configure_database(is_async: bool) -> tuple[str | None, str]:
     """
     Configure the database connection details.
 
-    Prompts the user to select the type of database (asynchronous or synchronous)
-    and the database engine (PostgreSQL, MySQL, SQLite, or MariaDB). Based on the
+    Prompts the user to select the database engine (PostgreSQL, MySQL, SQLite, or MariaDB). Based on the
     user's choices, it determines the appropriate database dependency and constructs
     the database URL.
+
+    Args:
+        is_async (bool): A boolean indicating whether the database should be asynchronous
 
     Returns:
         tuple: A tuple containing:
             - db_dependency (str | None): The database dependency module name.
             - db_url (str): The constructed database connection URL.
-            - db_thread_type (str): The type of database threading ('async' or 'sync').
     """
-    db_thread_type = Prompt.ask(
-        "Do you want to set up an asynchronous database or synchronous database?",
-        default="async",
-        choices=["async", "sync"],
-        show_choices=True,
-    )
     db_engine = Prompt.ask(
         "Which database are you using?",
         default="postgresql",
@@ -115,18 +110,16 @@ def configure_database() -> tuple[str | None, str, str]:
     )
     db_dependency = {
         "postgresql": "psycopg",
-        "mysql": "pymysql" if db_thread_type == "sync" else "asyncmy",
-        "mariadb": "pymysql" if db_thread_type == "sync" else "asyncmy",
-        "sqlite": "aiosqlite" if db_thread_type == "async" else None,
+        "mysql": "pymysql" if not is_async else "asyncmy",
+        "mariadb": "pymysql" if not is_async else "asyncmy",
+        "sqlite": "aiosqlite" if is_async else None,
     }[db_engine]
     if db_engine == "sqlite":
         db_url = recursive_prompt_with_validation(
             prompt="Enter the path to the SQLite database file",
             validation_func=validate_sqlite_url,
         )
-        db_url = (
-            f"sqlite{'+aiosqlite' if db_thread_type == 'async' else ''}:///{db_url}"
-        )
+        db_url = f"sqlite{'+aiosqlite' if is_async else ''}:///{db_url}"
     else:
         db_url = recursive_prompt_with_validation(
             prompt="Enter the database connection details (e.g., user:password@host:port/dbname)",
@@ -135,11 +128,11 @@ def configure_database() -> tuple[str | None, str, str]:
         )
         prefix = {
             "postgresql": "postgresql+psycopg",
-            "mysql": f"mysql+{'asyncmy' if db_thread_type == 'async' else 'pymysql'}",
-            "mariadb": f"mysql+{'asyncmy' if db_thread_type == 'async' else 'pymysql'}",
+            "mysql": f"mysql+{'asyncmy' if is_async else 'pymysql'}",
+            "mariadb": f"mysql+{'asyncmy' if is_async else 'pymysql'}",
         }[db_engine]
         db_url = f"{prefix}://{db_url}"
-    return db_dependency, db_url, db_thread_type
+    return db_dependency, db_url
 
 
 def configure_database_connection(db_url: str, base_path: Path) -> None:
@@ -159,7 +152,7 @@ def configure_database_connection(db_url: str, base_path: Path) -> None:
     add_key_value_to_env_file(base_path / ".env", "DATABASE_URL", db_url)
 
 
-def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
+def configure_database_in_project(is_async: bool, base_path: Path) -> None:
     """
     Configure database-related files in the project.
 
@@ -167,7 +160,7 @@ def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
     It uses Jinja2 templates to generate the content of these files based on the provided database thread type.
 
     Args:
-        db_thread_type (str): The type of database threading to use, either "sync" or "async".
+        is_async (bool): A boolean indicating whether the database should be asynchronous.
         base_path (Path): The base path of the project where the database configuration files will be created.
 
     Returns:
@@ -178,12 +171,12 @@ def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
         (
             "db_config_template.py.jinja2",
             "config.py",
-            {"is_async": db_thread_type == "async"},
+            {"is_async": is_async},
         ),
         (
             "init_db_template.py.jinja2",
             "init_db.py",
-            {"is_async": db_thread_type == "async"},
+            {"is_async": is_async},
         ),
         ("models_template.py.jinja2", "models.py", {}),
     ]
