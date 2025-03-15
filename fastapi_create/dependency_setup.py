@@ -9,7 +9,17 @@ from fastapi_create.requirements_setup import generate_requirements_txt
 def install_dependencies(
     base_path: Path, db_thread_type: str, db_dependency: str | None = None
 ) -> None:
-    """Install project dependencies based on database thread type."""
+    """
+    Install project dependencies based on database thread type.
+
+    Args:
+        base_path (Path): The base path where the requirements.txt file will be generated.
+        db_thread_type (str): The type of database thread, either "async" or "sync".
+        db_dependency (str | None, optional): An additional database dependency to install. Defaults to None.
+
+    Raises:
+        RuntimeError: If there is an error installing any of the dependencies.
+    """
     dependencies = DEPENDENCIES.copy()
     if db_thread_type == "async":
         dependencies.append("sqlalchemy[asyncio]")

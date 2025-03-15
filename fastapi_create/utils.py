@@ -12,16 +12,35 @@ from fastapi_create.constants import PROJECT_NAME_REGEX
 
 
 def validate_project_name(project_name: str) -> bool:
-    """Validate the project name"""
+    """
+    Validate the project name to ensure it is either a '.' or a valid directory name.
+
+    Args:
+        project_name (str): The name of the project to validate.
+
+    Returns:
+        bool: True if the project name is valid, False otherwise.
+    """
     if not PROJECT_NAME_REGEX.match(project_name) and project_name != ".":
         print(
-            "[red]Error: Invalid project name. Must be '.' or a valid Python identifier.[/red]"
+            "[red]Error: Invalid project name. Must be '.' or a valid directory name.[/red]"
         )
         return False
     return True
 
 
 def project_name_callback(project_name: str) -> str:
+    """
+    Callback function to validate and process the project name.
+    If the provided project name is an empty string, it prompts the user to enter a valid project name.
+    If the provided project name is not valid, it raises a BadParameter exception.
+    Args:
+        project_name (str): The name of the project to validate.
+    Returns:
+        str: The validated project name.
+    Raises:
+        typer.BadParameter: If the project name is not valid.
+    """
     if project_name.strip() == "":
         project_name = recursive_prompt_with_validation(
             prompt="Enter the project name", validation_func=validate_project_name
@@ -36,7 +55,16 @@ def project_name_callback(project_name: str) -> str:
 
 
 def create_file(file_path: Path, content: str) -> None:
-    """Create a file with the given content, ensuring parent directories exist."""
+    """
+    Create a file with the given content, ensuring parent directories exist.
+
+    Args:
+        file_path (Path): The path where the file will be created.
+        content (str): The content to write to the file.
+
+    Raises:
+        RuntimeError: If there is an error creating the file.
+    """
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(content)
@@ -46,7 +74,16 @@ def create_file(file_path: Path, content: str) -> None:
 
 
 def write_file(file_path: Path, content: str) -> None:
-    """Write content to a file."""
+    """
+    Write content to a file.
+
+    Args:
+        file_path (Path): The path to the file where the content will be written.
+        content (str): The content to write to the file.
+
+    Raises:
+        RuntimeError: If there is an error writing to the file.
+    """
     try:
         file_path.write_text(content)
     except (IOError, OSError) as e:
@@ -55,18 +92,49 @@ def write_file(file_path: Path, content: str) -> None:
 
 
 def generate_secret_key() -> str:
-    """Generate a random secret key."""
+    """
+    Generate a random secret key.
+
+    Returns:
+        str: A randomly generated secret key in hexadecimal format.
+    """
     return secrets.token_hex(32)
 
 
 def add_key_value_to_env_file(env_path: Path, key: str, value: str) -> None:
-    """Add a key-value pair to a .env file."""
+    """
+    Add a key-value pair to a .env file.
+
+    This function loads the environment variables from the specified .env file,
+    adds or updates the given key-value pair, and saves the changes back to the file.
+
+    Args:
+        env_path (Path): The path to the .env file.
+        key (str): The key to add or update in the .env file.
+        value (str): The value to associate with the key.
+
+    Returns:
+        None
+    """
     load_dotenv(env_path)
     set_key(str(env_path), key, value)
 
 
 def generate_file_content(template_name: str, **kwargs) -> str:
-    """Generate file content from a Jinja2 template."""
+    """
+    Generate file content from a Jinja2 template.
+
+    This function loads a Jinja2 template from the "templates" directory located
+    in the same directory as this script, and renders it with the provided keyword
+    arguments.
+
+    Args:
+        template_name (str): The name of the Jinja2 template file.
+        **kwargs: Arbitrary keyword arguments to be passed to the template for rendering.
+
+    Returns:
+        str: The rendered content of the template as a string.
+    """
     print(f"[yellow]Generating {template_name.split('_template')[0]} code...[/yellow]")
     env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
     template = env.get_template(template_name)
@@ -74,6 +142,17 @@ def generate_file_content(template_name: str, **kwargs) -> str:
 
 
 def generate_base_path(path_prefix: str | None = None) -> Path:
+    """
+    Generates an absolute base path based on the provided path prefix.
+
+    Args:
+        path_prefix (str | None): The prefix to use for generating the base path.
+                                  If None or an empty string is provided, the current working directory is used.
+                                  If "." is provided, the current working directory is used.
+
+    Returns:
+        Path: An absolute Path object representing the base path.
+    """
     base_path = Path.cwd() if path_prefix == "." else Path(path_prefix or "")
     if not base_path.is_absolute():
         base_path = Path.cwd() / base_path
@@ -128,7 +207,22 @@ def recursive_prompt_with_validation(
 
 
 def uninstall_dependencies(base_path: Path) -> None:
-    """Uninstall dependencies."""
+    """
+    Uninstall dependencies listed in the requirements.txt file located at the given base path.
+
+    This function performs the following steps:
+    1. Prints a message indicating that dependencies are being uninstalled.
+    2. Attempts to uninstall the dependencies listed in the requirements.txt file using pip.
+    3. Deletes the requirements.txt file after successful uninstallation.
+    4. Prints a success message if the uninstallation is successful.
+    5. Raises a RuntimeError if there is an error during the uninstallation process.
+
+    Args:
+        base_path (Path): The base path where the requirements.txt file is located.
+
+    Raises:
+        RuntimeError: If there is an error uninstalling the dependencies.
+    """
     print("[yellow]Uninstalling dependencies...[/yellow]")
     try:
         requirements_path = base_path / "requirements.txt"
@@ -144,7 +238,22 @@ def uninstall_dependencies(base_path: Path) -> None:
 
 
 def clean_up(base_path: Path) -> None:
-    """Remove the project directory if an error occurs."""
+    """
+    Remove the project directory if an error occurs.
+
+    This function performs the following steps:
+    1. Checks if the provided base_path exists.
+    2. Prints a message indicating the start of the cleanup process.
+    3. Uninstalls any dependencies associated with the project.
+    4. Removes the project directory and its contents.
+    5. Prints a message indicating the completion of the cleanup process.
+
+    Args:
+        base_path (Path): The path to the project directory to be removed.
+
+    Returns:
+        None
+    """
     if base_path and base_path.exists():
         print("[red]Cleaning up...[/red]")
         # Uninstall dependencies

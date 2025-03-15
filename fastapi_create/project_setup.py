@@ -18,7 +18,18 @@ PROJECT_STRUCTURE = {
 
 
 def create_skeleton(path_prefix: str | None = None) -> Path:
-    """Create the FastAPI project skeleton."""
+    """
+    Create the FastAPI project skeleton.
+
+    This function generates the base directory structure for a FastAPI project,
+    creates necessary files, and adds a secret key to the .env file.
+
+    Args:
+        path_prefix (str | None): Optional prefix for the base path where the project skeleton will be created.
+
+    Returns:
+        Path: The path to the created project skeleton.
+    """
     base_path = generate_base_path(path_prefix)
     secret_key = generate_secret_key()
     print("[yellow]Creating project skeleton...[/yellow]")
@@ -33,7 +44,16 @@ def create_skeleton(path_prefix: str | None = None) -> Path:
 
 
 def spin_up_project(project_name: str) -> Path:
-    """Set up the project directory and skeleton."""
+    """
+    Set up the project directory and skeleton.
+
+    Args:
+        project_name (str): The name of the project directory to create.
+                            If the value is ".", the current directory will be used.
+
+    Returns:
+        Path: The path to the created project directory.
+    """
     msg = "current directory" if project_name == "." else f"'{project_name}'"
     print(f"[yellow]Spinning up a new project in {msg}...[/yellow]")
     return create_skeleton(project_name)

@@ -15,7 +15,19 @@ from fastapi_create.utils import (
 
 
 def validate_sqlite_url(value: str) -> bool:
-    """Validate SQLite database URL (file path or :memory:)."""
+    """
+    Validate SQLite database URL (file path or :memory:).
+
+    This function checks if the provided SQLite database URL is valid. It accepts
+    either a special ":memory:" string for an in-memory database or a file path.
+    For file paths, it verifies that the directory exists and is writable.
+
+    Args:
+        value (str): The SQLite database URL to validate.
+
+    Returns:
+        bool: True if the URL is valid, False otherwise.
+    """
     if value == ":memory:":
         return True
     path = Path(value)
@@ -36,7 +48,21 @@ def validate_sqlite_url(value: str) -> bool:
 
 
 def validate_db_url(value: str, engine: str) -> bool:
-    """Validate database connection details for non-SQLite engines with optional port."""
+    """
+    Validate database connection details for non-SQLite engines with optional port.
+
+    Args:
+        value (str): The database URL to validate.
+        engine (str): The name of the database engine (e.g., PostgreSQL, MySQL).
+
+    Returns:
+        bool: True if the URL is valid, False otherwise.
+
+    The function checks if the provided database URL matches the expected format:
+    'user:password@host[:port]/dbname'. It also ensures that the port number, if provided,
+    is within the valid range (1-65535). If the URL is malformed or does not meet the
+    criteria, an error message is printed and the function returns False.
+    """
     if not DB_URL_REGEX.match(value):
         print(
             f"[red]Error: Invalid format for {engine}. Expected: user:password@host[:port]/dbname[/red]"
@@ -61,7 +87,20 @@ def validate_db_url(value: str, engine: str) -> bool:
 
 
 def configure_database() -> tuple[str | None, str, str]:
-    """Configure the database connection details."""
+    """
+    Configure the database connection details.
+
+    Prompts the user to select the type of database (asynchronous or synchronous)
+    and the database engine (PostgreSQL, MySQL, SQLite, or MariaDB). Based on the
+    user's choices, it determines the appropriate database dependency and constructs
+    the database URL.
+
+    Returns:
+        tuple: A tuple containing:
+            - db_dependency (str | None): The database dependency module name.
+            - db_url (str): The constructed database connection URL.
+            - db_thread_type (str): The type of database threading ('async' or 'sync').
+    """
     db_thread_type = Prompt.ask(
         "Do you want to set up an asynchronous database or synchronous database?",
         default="async",
@@ -104,12 +143,36 @@ def configure_database() -> tuple[str | None, str, str]:
 
 
 def configure_database_connection(db_url: str, base_path: Path) -> None:
-    """Write database connection details to .env"""
+    """
+    Write database connection details to a .env file.
+
+    This function takes a database URL and a base path, and writes the database
+    connection details to a .env file located at the specified base path.
+
+    Args:
+        db_url (str): The database connection URL.
+        base_path (Path): The base path where the .env file is located.
+
+    Returns:
+        None
+    """
     add_key_value_to_env_file(base_path / ".env", "DATABASE_URL", db_url)
 
 
 def configure_database_in_project(db_thread_type: str, base_path: Path) -> None:
-    """Configure database-related files in the project."""
+    """
+    Configure database-related files in the project.
+
+    This function sets up the necessary database configuration files in the specified project directory.
+    It uses Jinja2 templates to generate the content of these files based on the provided database thread type.
+
+    Args:
+        db_thread_type (str): The type of database threading to use, either "sync" or "async".
+        base_path (Path): The base path of the project where the database configuration files will be created.
+
+    Returns:
+        None
+    """
     db_path = base_path / "app" / "db"
     configs: list[tuple[str, str, dict]] = [
         (
