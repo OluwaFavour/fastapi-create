@@ -69,7 +69,15 @@ def create(project_name: str = typer.Argument("", callback=project_name_callback
         smtp_enabled = configure_smtp_settings(base_path)
 
         ## Prompt user for alembic configuration
-        alembic_folder_name = alembic_folder_name_prompt()
+        alembic_include = Prompt.ask(
+            "Do you want to include Alembic migrations?",
+            default="Yes",
+            choices=["Yes", "No"],
+        )
+
+        alembic_folder_name = (
+            None if alembic_include.lower() == "no" else alembic_folder_name_prompt()
+        )
 
         # Create project skeleton
         spin_up_project(project_name)
@@ -82,7 +90,8 @@ def create(project_name: str = typer.Argument("", callback=project_name_callback
             configure_core_messages_in_project(base_path, is_async)
         configure_core_config_in_project(base_path, smtp_enabled)
         configure_core_dependencies_in_project(base_path, is_async)
-        alembic_setup(alembic_folder_name, base_path, is_async)
+        if alembic_include:
+            alembic_setup(alembic_folder_name, base_path, is_async)
         configure_main_in_project(is_async, base_path)
         configure_manage_in_project(base_path)
         configure_readme_in_project(base_path)
