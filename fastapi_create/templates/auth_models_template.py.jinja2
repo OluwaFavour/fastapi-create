@@ -1,0 +1,169 @@
+from datetime import datetime, timezone
+from typing import Union
+from uuid import UUID, uuid4
+from sqlalchemy import func, and_, or_
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.future import select
+{% if is_async %}from sqlalchemy.ext.asyncio import AsyncSession{% else %}from sqlalchemy.orm import Session{% endif %}
+
+from app.db.config import Base
+{# from app.core.config import db_logger #}
+from app.core.utils.security import verify_password
+
+
+class {{ auth_model }}(Base):
+    __tablename__ = "{{ auth_model_plural.lower() }}"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    {% if username_is_required %}username: Mapped[str] = mapped_column(index=True, unique=True){% endif %}
+    {% if email_is_required %}email: Mapped[str] = mapped_column(index=True, unique=True){% endif %}
+    {% if phone_is_required %}phone: Mapped[str] = mapped_column(index=True, unique=True){% endif %}
+    password_hash: Mapped[str] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(
+        default=func.now(), nullable=False, index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=func.now(), onupdate=func.now(), nullable=False, index=True
+    )
+    is_active: Mapped[bool] = mapped_column(default={% if verification_enabled %}False{% else %}True{% endif %})
+    {% if verification_enabled %}is_verified: Mapped[bool] = mapped_column(default=False)
+    verification_code: Mapped["VerificationCode"] = relationship("VerificationCode", back_populates="{{ auth_model.lower() }}"){% endif %}
+
+    @classmethod
+    {% if is_async %}async {% endif %}def get(cls, session: {% if is_async %}Async{% endif %}Session, **kwargs) -> Union["{{ auth_model }}", None]:
+        """
+        Retrieve {{ auth_model }} record from the database based on provided filter arguments.
+        Args:
+            session ({% if is_async %}Async{% endif %}Session): The SQLAlchemy session to use for the query.
+            **kwargs: Arbitrary keyword arguments representing the filter conditions.
+        Returns:
+            Union["{{ auth_model }}", None]: The {{ auth_model }} object if found, otherwise None.
+        Raises:
+            ValueError: If no filter arguments are provided or if invalid filter arguments are given.
+        Example:
+            {{ auth_model.lower() }} = {% if is_async %}await {% endif %}{{ auth_model }}.get(session, id=1)
+        """
+        if not kwargs:
+            {# db_logger.warning("No filter arguments provided to fetch a {{ auth_model }}.") #}
+            raise ValueError("No filter arguments provided")
+
+        valid_keys = {column.key for column in cls.__table__.columns}
+        invalid_keys = set(kwargs.keys()) - valid_keys
+        if invalid_keys:
+            {# db_logger.warning(f"Invalid filter keys: {', '.join(invalid_keys)}") #}
+            raise ValueError(f"Invalid filter arguments: {', '.join(invalid_keys)}")
+
+        conditions = [getattr(cls, key) == value for key, value in kwargs.items()]
+        {# db_logger.info(f"Fetching {{ auth_model }} with conditions: {kwargs}") #}
+        result = {% if is_async %}await {% endif %}session.execute(select(cls).where(and_(*conditions)))
+        {{ auth_model.lower() }} = result.scalar_one_or_none()
+
+        {# if {{ auth_model.lower() }}:
+            db_logger.info(f"{{ auth_model }} found: {{{ auth_model.lower() }}}")
+        else:
+            db_logger.info(f"No {{ auth_model }} found for conditions: {kwargs}") #}
+
+        return {{ auth_model.lower() }}
+
+    @classmethod
+    {% if is_async %}async {% endif %}def get_by_{{ login_field }}(cls, session: {% if is_async %}Async{% endif %}Session, {{ login_field }}: str) -> Union["{{ auth_model }}", None]:
+        """
+        Retrieve {{ auth_model }} record from the database based on the provided {{ login_field }}.
+        Args:
+            session ({% if is_async %}Async{% endif %}Session): The SQLAlchemy session to use for the query.
+            {{ login_field }} (str): The value of the {{ login_field }} to search for.
+        Returns:
+            Union["{{ auth_model }}", None]: The {{ auth_model }} object if found, otherwise None.
+        Raises:
+            ValueError: If the {{ login_field }} is empty or if the {{ login_field }} is invalid.
+        Example:
+            {{ auth_model.lower() }} = {% if is_async %}await {% endif %}{{ auth_model }}.get_by_{{ login_field }}(session, {{ login_field }}=<value>)
+        """
+        if not {{ login_field }}:
+            {# db_logger.warning("Empty {{ login_field }} provided to fetch a {{ auth_model }}.") #}
+            raise ValueError("Empty {{ login_field }} provided")
+
+        {# db_logger.info(f"Fetching {{ auth_model }} with {{ login_field }}: {{ login_field }}") #}
+        {{ auth_model.lower() }} = {% if is_async %}await {% endif %}cls.get(session, {{ login_field }}={{ login_field }})
+        return {{ auth_model.lower() }}
+
+    def authenticate(
+        self, password: str, return_object: bool = False
+    ) -> Union["{{ auth_model }}", bool]:
+        """
+        Authenticate the user by verifying the provided password.
+
+        Args:
+            password (str): The password to verify.
+            return_object (bool, optional): If True, return the user object on successful authentication.
+                                            If False, return a boolean indicating success. Defaults to False.
+
+        Returns:
+            Union["User", bool]: The user object if return_object is True and authentication is successful,
+                                    otherwise a boolean indicating the success of the authentication.
+                                    Returns None if return_object is True and authentication fails.
+        """
+        if verify_password(password, self.password_hash):
+            return self if return_object else True
+        return None if return_object else False
+    
+    {% if verification_enabled %}{% if is_async %}async {% endif %}def verify(self, session: {% if is_async %}Async{% endif %}Session) -> None:
+        """
+        Verify the user account.
+        """
+        self.is_verified = True
+        self.is_active = True
+        {% if is_async %}await {% endif %}session.commit()
+    {% endif %}
+    
+{% if verification_enabled %}
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    {{auth_model.lower()}}_id: Mapped[UUID] = mapped_column(index=True, nullable=False)
+    code: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        default=func.now(), nullable=False, index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
+
+    {{ auth_model.lower() }}: Mapped["{{ auth_model }}"] = relationship("{{ auth_model }}", back_populates="verification_code")
+
+    @classmethod
+    {% if is_async %}async {% endif %}def get_by_{{auth_model.lower()}}_id(cls, session: {% if is_async %}Async{% endif %}Session, {{auth_model.lower()}}_id: UUID) -> Union["VerificationCode", None]:
+        """
+        Retrieve the verification code record from the database based on the provided {{auth_model.lower()}}_id.
+        Args:
+            session ({% if is_async %}Async{% endif %}Session): The SQLAlchemy session to use for the query.
+            {{auth_model.lower()}}_id (UUID): The {{auth_model.lower()}}_id to search for.
+        Returns:
+            Union["VerificationCode", None]: The VerificationCode object if found, otherwise None.
+        Raises:
+            ValueError: If the {{auth_model.lower()}}_id is empty.
+        Example:
+            verification_code = {% if is_async %}await {% endif %}VerificationCode.get_by_{{auth_model.lower()}}_id(session, {{auth_model.lower()}}_id=<value>)
+        """
+        if not {{auth_model.lower()}}_id:
+            {# db_logger.warning("Empty {{auth_model.lower()}}_id provided to fetch a VerificationCode.") #}
+            raise ValueError("Empty {{auth_model.lower()}}_id provided")
+
+        {# db_logger.info(f"Fetching VerificationCode with {{auth_model.lower()}}_id: {{{auth_model.lower()}}_id}") #}
+        verification_code = {% if is_async %}await {% endif %}cls.get(session, {{auth_model.lower()}}_id={{auth_model.lower()}}_id)
+        return verification_code
+    
+    @property
+    def is_expired(self) -> bool:
+        """
+        Check if the verification code has expired.
+        Returns:
+            bool: A boolean indicating whether the verification code has expired.
+        """
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    {% if is_async %}async {% endif %}def verify(self, session: {% if is_async %}Async{% endif %}Session) -> None:
+        """
+        Verify the user account.
+        """
+        self.{{ auth_model.lower() }}.verify(session)
+{% endif %}

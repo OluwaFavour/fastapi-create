@@ -7,7 +7,10 @@ from fastapi_create.requirements_setup import generate_requirements_txt
 
 
 def install_dependencies(
-    base_path: Path, is_async: bool, db_dependency: str | None = None
+    base_path: Path,
+    is_async: bool,
+    db_dependency: str | None = None,
+    auth_system: str | None = None,
 ) -> None:
     """
     Install project dependencies based on database thread type.
@@ -27,6 +30,9 @@ def install_dependencies(
         dependencies.append("sqlalchemy")
     if db_dependency:
         dependencies.append(db_dependency)
+    if auth_system:
+        if auth_system == "jwt":
+            dependencies.append("pyjwt")
     print("[yellow]Installing project dependencies...[/yellow]")
     for dependency in dependencies:
         try:

@@ -1,0 +1,54 @@
+from typing import Annotated
+from uuid import UUID
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic_extra_types.phone_numbers import PhoneNumber
+
+from app.core.utils.validators import validate_password
+
+class {{ auth_model }}Base(BaseModel):
+    {% if username_is_required %}username: str{% endif %}
+    {% if email_is_required %}email: EmailStr{% endif %}
+    {% if phone_is_required %}phone: PhoneNumber{% endif %}
+
+class {{ auth_model }}Create({{ auth_model }}Base):
+    password: Annotated[
+        str,
+        Field(
+            ...,
+            min_length=8,
+            description="Password for the user account, must be at least 8 characters long, contain at least one digit, one uppercase letter, one lowercase letter, and one special character, and not contain spaces.",
+        ),
+    ]
+    model_config: ConfigDict = ConfigDict(extra="forbid")
+
+    @field_validator("password")
+    def password_validator(cls, value: str) -> str:
+        """
+        password_validator validates the password.
+
+        Args:
+            value (str): The password to validate
+
+        Returns:
+            str: The validated password
+        """
+        return validate_password(value)
+
+class {{ auth_model }}({{ auth_model }}Base):
+    model_config: ConfigDict = ConfigDict(from_attributes=True)
+    id: UUID
+    is_active: bool
+    {% if verification_enabled %}is_verfied: bool{% endif %}
+
+{% if verification_enabled %}class VerificationData(BaseModel):
+    {{auth_model.lower()}}_id: UUID
+    code: str{% endif %}
+
+class LoginDetails(BaseModel):
+    {{ login_field }}: {% if login_field == "username" %}str{% elif login_field == "email" %}EmailStr{% else %}PhoneNumber{% endif %}
+    password: str
+
+{% if auth_system == "jwt" %}class Token(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: Annotated[int, Field(description="The token's expiration time in seconds.")]{% endif %}

@@ -1,4 +1,6 @@
-from {% if is_async %}aiosmtplib{% else %}smtplib{% endif %} import (
+{% if auth_enabled %}from typing import Annotated
+from uuid import UUID{% endif%}
+{% if smtp_enabled %}from {% if is_async %}aiosmtplib{% else %}smtplib{% endif %} import (
     SMTP,
     SMTPConnectError,
     SMTPHeloError,
@@ -6,11 +8,21 @@ from {% if is_async %}aiosmtplib{% else %}smtplib{% endif %} import (
     SMTPException,
     SMTPResponseException,
 )
-from fastapi import HTTPException, status
+from app.core.config import get_settings{% endif %}
+from fastapi import (
+    HTTPException,
+    status,{% if auth_enabled %}
+    Depends,{% endif %}
+)
+{% if auth_enabled %}{% if is_async %}from sqlalchemy.ext.asyncio import AsyncSession{% else %}from sqlalchemy.orm import Session{% endif %}{% if auth_system == "jwt" %}
+import jwt
+from app.core.utils.security import verify_token{% endif %}{% endif %}
+{% if auth_enabled %}{% if auth_system == "jwt" %}from app.core.config import oauth2_scheme{% endif %}
+from app.db.config import get{% if is_async %}_async{% endif %}_session
+from app.db.models import {{ auth_model }}{% endif %}
 
-from app.core.config import get_settings
 
-async def get{% if is_async %}_async{% endif %}_smtp():
+{% if smtp_enabled %}async def get{% if is_async %}_async{% endif %}_smtp():
     """
     {% if is_async %}Asynchronous{% else %}Synchronous{% endif %} generator to get an SMTP client for sending emails.
 
@@ -66,3 +78,76 @@ async def get{% if is_async %}_async{% endif %}_smtp():
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"message": "An error occurred", "error": str(e)},
             )
+{% endif %}
+
+{% if auth_enabled %}{% if is_async %}async {% endif %}def get_current_{{ auth_model.lower() }}(
+    {% if auth_system == "jwt" %}token: Annotated[str, Depends(oauth2_scheme)],{% elif auth_system == "session" %}request: Request,{% endif %}
+    session: Annotated[{% if is_async %}Async{% endif %}Session, Depends(get{% if is_async %}_async{% endif %}_session)]
+) -> {{ auth_model }}:
+    """
+    get_current_{{ auth_model.lower() }} retrieves the current {{ auth_model.lower() }}.
+
+    Args:
+        {% if auth_system == "jwt" %}token (Annotated[str, Depends(oauth2_scheme)]): The JWT token.{% elif auth_system == "session" %}request (Request): The request{% endif %}
+        session ({% if is_async %}Async{% endif %}Session): The SQLAlchemy {% if is_async %}Async{% endif %}Session.
+
+    Returns:
+        {{ auth_model }}: The current {{ auth_model.lower() }}.
+    
+    Raises:
+        HTTPException: If the token is invalid or the {{ auth_model.lower() }} ID is invalid.
+    """
+    
+    {% if auth_system == "jwt" %}try:
+        payload = verify_token(token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+    {% elif auth_system == "session" %}
+    if "{{ auth_model.lower() }}_id" not in request.session:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session not authenticated"){% endif %}
+    {{ auth_model.lower() }}_id = {% if auth_system == "jwt" %}payload.get("sub"){% elif auth_system == "session" %}request.session.get("{{ auth_model.lower() }}_id"){% endif %}
+    if not {{ auth_model.lower() }}_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+
+    try:
+        # Ensure {{ auth_model.lower() }}_id is a valid UUID
+        {{ auth_model.lower() }}_uuid = UUID({{ auth_model.lower() }}_id) if isinstance({{ auth_model.lower() }}_id, str) else {{ auth_model.lower() }}_id
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+        )
+
+    try:
+        {{ auth_model.lower() }} = {% if is_async %}await {% endif %}{{ auth_model }}.get(session, id={{ auth_model.lower() }}_uuid)
+        if not {{ auth_model.lower() }}:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve user: {str(e)}")
+    return {{ auth_model.lower() }}
+
+{% if is_async %}async {% endif %}def  get_current_active_{{ auth_model.lower() }}(
+    {{ auth_model.lower() }}: Annotated[{{ auth_model }}, Depends(get_current_{{ auth_model.lower() }})],
+) -> {{ auth_model }}:
+    """
+    get_current_active_{{ auth_model.lower() }} retrieves the currently active {{ auth_model.lower() }} from the session.
+
+    Args:
+        {% if auth_system == "jwt" %}token (Annotated[str, Depends(oauth2_scheme)]): The JWT token.{% elif auth_system == "session" %}request (Request): The request{% endif %}
+        session ({% if is_async %}Async{% endif %}Session): The SQLAlchemy {% if is_async %}Async{% endif %}Session.
+
+    Returns:
+        {{ auth_model }}: The currently active {{ auth_model.lower() }}.
+
+    Raises:
+        HTTPException: If the {{ auth_model.lower() }} is inactive.
+    """
+    if not {{ auth_model.lower() }}.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not active"){% if verification_enabled %}
+    if not {{ auth_model.lower() }}.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not verified"){% endif %}{% endif %}
+    return {{ auth_model.lower() }}

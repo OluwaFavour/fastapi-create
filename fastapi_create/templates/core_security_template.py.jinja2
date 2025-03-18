@@ -1,0 +1,56 @@
+from typing import Any
+{% if verification_enabled %}import secrets{% endif %}
+from app.core.config import password_context
+{% if auth_system == "jwt" %}import jwt
+from datetime import datetime, timedelta, timezone
+from app.core.config import get_settings
+{% endif %}
+
+
+def hash_password(password: str) -> str:
+    """
+    Hashes a plain text password using a password hashing context.
+
+    Args:
+        password (str): The plain text password to be hashed.
+
+    Returns:
+        str: The hashed password.
+    """
+    return password_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify if the provided plain password matches the hashed password.
+
+    Args:
+        plain_password (str): The plain text password to verify.
+        hashed_password (str): The hashed password to compare against.
+
+    Returns:
+        bool: True if the plain password matches the hashed password, False otherwise.
+    """
+    return password_context.verify(plain_password, hashed_password)
+
+{% if verification_enabled %}def generate_otp() -> str:
+    """
+    Generate a 6-character OTP (One-Time Password) consisting of
+    uppercase letters and digits.
+
+    Returns:
+        str: A randomly generated 6-character OTP.
+    """
+    return "".join(
+        secrets.choice("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") for _ in range(6)
+    ){% endif %}
+
+{% if auth_system == "jwt" %}def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes=30)) -> str:
+    settings = get_settings()
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+def verify_token(token: str) -> dict[str, Any]:
+        return jwt.decode(token, get_settings().secret_key, algorithms=[get_settings().algorithm]){% endif %}

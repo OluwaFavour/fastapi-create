@@ -1,0 +1,210 @@
+from datetime import datetime, timedelta
+from typing import Annotated
+from uuid import UUID
+{% if verification_enabled %}from {% if is_async %}aiosmtplib{% else %}smtplib{% endif %} import SMTP{% endif %}
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    Request,
+    status,
+    HTTPException,{% if verification_enabled %}
+    BackgroundTasks{% endif %}
+)
+
+{% if is_async %}from sqlalchemy.ext.asyncio import AsyncSession{% else %}from sqlalchemy.orm import Session{% endif %}
+
+from app.core.config import get_settings
+from app.core.dependencies import get_current_active_{{ auth_model.lower() }}{% if verification_enabled %}
+from app.core.dependencies import get{% if is_async %}_async{% endif %}_smtp
+from app.core.utils.messages import send_email {% endif %}
+from app.core.utils.security import ({% if verification_enabled %}
+    generate_otp,{% endif %}
+    hash_password,
+    {% if auth_system == "jwt" %}create_access_token,{% endif %}
+)
+from app.db.config import get{% if is_async %}_async{% endif %}_session
+from app.db.models import {{ auth_model }}{% if verification_enabled %}, VerificationCode{% endif %}
+from app.schemas.{{ auth_model_plural.lower() }} import (
+    LoginDetails,
+    {{ auth_model}} as {{ auth_model}}Schema,
+    {{ auth_model}}Create,
+    {% if verification_enabled %}VerificationData,{% endif %}
+    {% if auth_system == "jwt" %}Token,{% endif %}
+)
+
+router = APIRouter(
+    prefix="/auth",
+    tags=["{{ auth_model_plural.lower() }}", "auth"],
+)
+
+{% if verification_enabled %}
+{% if is_async %}async {% endif %}def send_verification_email(id: UUID, email: str) -> None:
+    """
+    Sends a verification email to the given email address.
+    
+    Args:
+        id (UUID): The {{ auth_model.lower() }}'s unique identifier.
+        email (str): The recipient's email address.
+    """
+    settings = get_settings()
+    
+    # Generate OTP and store in database
+    {% if is_async %}async {% endif %}with get_{% if is_async %}async_{% endif %}session() as session:
+        code = generate_otp()
+        expires_at = datetime.now() + timedelta(minutes=settings.otp_expiry)
+        existing_code = {% if is_async %}await {% endif %}VerificationCode.get_by_{{ auth_model.lower() }}_id(session, id)
+        verification_code = existing_code or VerificationCode({{ auth_model.lower() }}_id=id, code=code, expires_at=expires_at)
+        if existing_code:
+            verification_code.code = code
+            verification_code.expires_at = expires_at
+        else:
+            session.add(verification_code)
+        {% if is_async %}await {% endif %}session.commit()
+    
+    # Send email
+    {% if is_async %}async {% endif %}with get_{% if is_async %}async_{% endif %}smtp() as smtp:
+        message = f"Your verification code is: {code}, valid for {settings.otp_expiry} minutes."
+        {% if is_async %}await {% endif %}send_email(
+            smtp=smtp,
+            subject="Email Verification",
+            recipient=email,
+            plain_text=message,
+            sender=settings.smtp_login,
+        ){% endif %}
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+{% if is_async %}async {% endif %}def signup(
+    data: Annotated[{{ auth_model }}Create, Form()],
+    session: Annotated[{% if is_async %}Async{% endif %}Session, Depends(get{% if is_async %}_async{% endif %}_session)],{% if verification_enabled %}
+    background_tasks: BackgroundTasks,{% endif %}
+) -> {{ auth_model }}Schema:
+    """
+    Register a new {{auth_model.lower()}}.
+    """
+    # Check all unique fields
+    {% if username_is_required %}if data.username:
+        existing_by_username = {% if is_async %}await {% endif %}{{ auth_model }}.get(session, username=data.username)
+        if existing_by_username:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken"){% endif %}
+    {% if email_is_required %}if data.email:
+        existing_by_email = {% if is_async %}await {% endif %}{{ auth_model }}.get(session, email=data.email)
+        if existing_by_email:
+            {% if verification_enabled %}if existing_by_email.is_verified:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+            else:
+                background_tasks.add_task(send_verification_email, existing_by_email.id, data.email)
+                return existing_by_email{% else %}
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"){% endif %}{% endif %}
+    {% if phone_is_required %}if data.phone:
+        existing_by_phone = {% if is_async %}await {% endif %}{{ auth_model }}.get(session, phone=data.phone)
+        if existing_by_phone:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number already registered"){% endif %}
+
+    # Create the new {{auth_model.lower()}}
+    {{ auth_model.lower() }}_data = data.model_dump()
+    {{ auth_model.lower() }}_data["password_hash"] = hash_password({{ auth_model.lower() }}_data.pop("password"))
+    {{auth_model.lower()}} = {{ auth_model }}(**{{ auth_model.lower() }}_data)
+    try:
+        session.add({{auth_model.lower()}})
+        {% if is_async %}await {% endif %}session.commit()
+        {% if is_async %}await {% endif %}session.refresh({{auth_model.lower()}})
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create {{ auth_model.lower() }}: {str(e)}")
+    {% if verification_enabled %}# Send verification email
+    background_tasks.add_task(send_verification_email, {{auth_model.lower()}}.id, data.email){% endif %}
+    return {{auth_model.lower()}}
+
+@router.post("/login")
+{% if is_async %}async {% endif %}def login(
+    login_data: Annotated[LoginDetails, Form()],{% if auth_system == "session" %}
+    request: Request,{% endif %}
+    session: Annotated[{% if is_async %}Async{% endif %}Session, Depends(get{% if is_async %}_async{% endif %}_session)],
+) -> {% if auth_system == "jwt" %}Token{% elif auth_system == "session" %}{{ auth_model }}Schema{% endif %}:
+    """
+    Authenticate the {{auth_model.lower()}} using the provided login details.
+    """
+    try:
+        {{ auth_model.lower() }} = {% if is_async %}await {% endif %}{{ auth_model }}.get_by_{{ login_field }}(session, {{ login_field }}=login_data.{{ login_field }})
+        if not {{ auth_model.lower() }} or not {{ auth_model.lower() }}.authenticate(login_data.password):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        if not {{ auth_model.lower() }}.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not active")
+        {% if verification_enabled %}if not {{ auth_model.lower() }}.is_verified:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not verified"){% endif %}
+        {% if auth_system == "session" %}
+        request.session.update({"{{ auth_model.lower() }}_id": str({{ auth_model.lower() }}.id)})
+        return {{ auth_model.lower() }}{% elif auth_system == "jwt" %}
+        expires_delta = timedelta(minutes=get_settings().access_token_expiry)
+        access_token = create_access_token({"sub": str({{ auth_model.lower() }}.id)}, expires_delta=expires_delta)
+        token = Token(
+            access_token=access_token,
+            token_type="bearer",
+            expires_in=int(expires_delta.total_seconds())
+        )
+        return token{% endif %}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+{% if verification_enabled %}@router.post("/verify")
+{% if is_async %}async {% endif %}def verify(
+    data: Annotated[VerificationData, Form()],
+    session: Annotated[{% if is_async %}Async{% endif %}Session, Depends(get{% if is_async %}_async{% endif %}_session)],
+):
+    """
+    Verify the {{auth_model.lower()}} account using the provided verification code.
+    """
+    # Get the {{auth_model.lower()}}
+    {{auth_model.lower()}} = {% if is_async %}await {% endif %}{{ auth_model }}.get(session, id=data.{{auth_model.lower()}}_id)
+    if not {{auth_model.lower()}}:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="{{auth_model}} not found")
+    if {{auth_model.lower()}}.is_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="{{auth_model}} already verified")
+    
+    # Get the verification code
+    verification_code = {% if is_async %}await {% endif %}VerificationCode.get_by_{{auth_model.lower()}}_id(session, {{auth_model.lower()}}.id)
+    if not verification_code:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Verification code not found")
+    if verification_code.code != data.code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification code")
+    if verification_code.is_expired:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification code has expired. Request a new one via /resend-verification.")
+    
+    # Verify the {{auth_model.lower()}} account
+    try:
+        {% if is_async %}await {% endif %}verification_code.{{auth_model.lower()}}.verify(session)
+        session.delete(verification_code)
+        {% if is_async %}await {% endif %}session.commit()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to verify {{ auth_model.lower() }}: {str(e)}")
+    return {"message": "Verification successful", "{{auth_model.lower()}}_id": {{auth_model.lower()}}.id}
+@router.post("/resend-verification")
+{% if is_async %}async {% endif %}def resend_verification(
+    {{ login_field }}: Annotated[str, Form()],
+    session: Annotated[{% if is_async %}Async{% endif %}Session, Depends(get{% if is_async %}_async{% endif %}_session)],
+    background_tasks: BackgroundTasks,
+):
+    """
+    Resend a verification email for an unverified {{auth_model.lower()}}.
+    """
+    {{auth_model.lower()}} = {% if is_async %}await {% endif %}{{ auth_model }}.get_by_{{ login_field }}(session, {{ login_field }})
+    if not {{auth_model.lower()}}:
+        raise HTTPException(status_code=404, detail="{{auth_model}} not found")
+    if {{auth_model.lower()}}.is_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="{{auth_model}} already verified")
+
+    background_tasks.add_task(send_verification_email, {{auth_model.lower()}}.id, {{auth_model.lower()}}.email)
+    return {"message": "Verification email resent"}
+{% endif %}
+
+@router.get("/me")
+{% if is_async %}async {% endif %}def get_me(
+    {{auth_model.lower()}}: Annotated[{{ auth_model }}Schema, Depends(get_current_active_{{ auth_model.lower() }})],
+) -> {{ auth_model }}Schema:
+    """
+    Get the current {{auth_model.lower()}}.
+    """
+    return {{auth_model.lower()}}

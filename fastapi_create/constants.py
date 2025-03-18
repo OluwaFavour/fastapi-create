@@ -25,4 +25,5 @@ DEPENDENCIES = [
     "pydantic-extra-types",
     "alembic",
     "passlib[bcrypt]",
+    "phonenumbers",
 ]

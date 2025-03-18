@@ -3,7 +3,11 @@ from rich import print
 from fastapi_create.utils import generate_file_content, write_file
 
 
-def generate_main_code(is_async: bool, cors_enabled: bool) -> str:
+def generate_main_code(
+    is_async: bool,
+    cors_enabled: bool,
+    auth_enabled: bool,
+) -> str:
     """
     Generate the main application code from a template.
 
@@ -17,12 +21,15 @@ def generate_main_code(is_async: bool, cors_enabled: bool) -> str:
     """
     print("[yellow]Generating main code...[/yellow]")
     return generate_file_content(
-        "main_template.py.jinja2", is_async=is_async, cors_enabled=cors_enabled
+        "main_template.py.jinja2",
+        is_async=is_async,
+        cors_enabled=cors_enabled,
+        auth_enabled=auth_enabled,
     )
 
 
 def configure_main_in_project(
-    is_async: bool, base_path: Path, cors_enabled: bool = True
+    is_async: bool, base_path: Path, cors_enabled: bool, auth_enabled: bool
 ) -> None:
     """
     Configure main application files in the project.
@@ -39,6 +46,6 @@ def configure_main_in_project(
     """
     app_path = base_path / "app"
     print(f"[yellow]Writing main.py to the project...[/yellow]")
-    content = generate_main_code(is_async, cors_enabled)
+    content = generate_main_code(is_async, cors_enabled, auth_enabled)
     write_file(app_path / "main.py", content)
     print("[green]main.py written successfully[/green]")

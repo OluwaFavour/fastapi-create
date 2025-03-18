@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 {% if cors_enabled %}from fastapi.middleware.cors import CORSMiddleware{% endif %}
-
-from starlette.middleware.sessions import SessionMiddleware
+{% if auth_system == "session" %}
+from starlette.middleware.sessions import SessionMiddleware{% endif %}
 
 from app.core.config import get_settings
-from app.db.init_db import init_db, dispose_db
+from app.db.init_db import init_db, dispose_db{% if auth_enabled %}
+from app.routes.auth import router as auth_router{% endif %}
 
 
 @asynccontextmanager
@@ -39,8 +40,14 @@ app = FastAPI(
 )
 
 # ADD MIDDLEWARES
-## ADD SESSION MIDDLEWARE
-
+{% if auth_system == "session" %}## ADD SESSION MIDDLEWARE
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=get_settings().secret_key,
+    same_site=get_settings().session_same_site,
+    https_only=get_settings().session_secure,
+    max_age=get_settings().session_expiry * 24 * 60 * 60,
+){% endif %}
 
 ## ADD CORS MIDDLEWARE
 {% if cors_enabled %}app.add_middleware(
@@ -52,7 +59,8 @@ app = FastAPI(
 ){% endif %}
 
 
-# ADD ROUTERS
+# ADD ROUTERS{% if auth_enabled %}
+app.include_router(auth_router){% endif %}
 
 
 

@@ -1,7 +1,8 @@
 from passlib.context import CryptContext
 
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict{% if auth_system == "jwt" %}
+from fastapi.security import OAuth2PasswordBearer{% endif %}
 
 # from app.core.logger import setup_logger
 
@@ -24,6 +25,16 @@ class Settings(BaseSettings):
     smtp_login: str
     smtp_password: str
     smtp_port: int{% endif %}
+    {% if verification_enabled %}
+    # OTP Verification settings
+    otp_expiry: int = 5 # In minutes{% endif %}
+    {% if auth_system %}{% if auth_system == "jwt" %}# JWT settings
+    algorithm: str = "HS256"
+    access_token_expiry: int = 30{% endif %}{% if auth_system == "session" %}
+    # Session settings
+    session_expiry: int = 14 # In days
+    session_same_site: str = "lax"
+    session_secure: bool = False{% endif %}
 
     model_config = SettingsConfigDict(env_file=".env")
 
@@ -36,4 +47,6 @@ def get_settings():
 # Database logger instance
 # db_logger = setup_logger("database_logger", "logs/database_actions.log")
 
-password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+password_context = CryptContext(schemes=["bcrypt"], deprecated="auto"){% if auth_system == "jwt" %}
+# JWT settings
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login"){% endif %}

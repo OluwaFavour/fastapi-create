@@ -1,0 +1,36 @@
+import re
+
+def validate_password(password: str):
+    """
+    validate_password validates the password.
+
+    Args:
+        password (str): The password to validate
+
+    Returns:
+        str: The validated password
+
+    Raises:
+        ValueError: If the password is invalid
+    """
+    # Check for at least one digit
+    if not any(char.isdigit() for char in password):
+        raise ValueError("Password must contain at least one digit")
+
+    # Check for at least one uppercase letter
+    if not any(char.isupper() for char in password):
+        raise ValueError("Password must contain at least one uppercase letter")
+
+    # Check for at least one lowercase letter
+    if not any(char.islower() for char in password):
+        raise ValueError("Password must contain at least one lowercase letter")
+
+    # Check for at least one special character using regex
+    if not re.search(r'[!@#$%^&*(),.?":;{}|<>\\/-_+=`~]', password):
+        raise ValueError("Password must contain at least one special character")
+
+    # Check for spaces
+    if " " in password:
+        raise ValueError("Password must not contain spaces")
+
+    return password
